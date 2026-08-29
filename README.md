@@ -89,10 +89,49 @@ API en desarrollo (ver `apps/web/src/lib/api.ts` y `TenantMiddleware`).
 pnpm --filter @informes/ingestion parse ./ruta/al/boletin.pdf 2026-165
 ```
 
-> ⚠️ El adaptador de Nexus PJ (`apps/ingestion/src/sources/nexus-pj.adapter.ts`)
-> tiene marcados con `TODO(nexus)` los detalles del endpoint/descarga que deben
-> confirmarse desde dentro de la VPC de AWS (la fuente solo es alcanzable desde
-> redes de CR).
+> ⚠️ El adaptador de Nexus PJ / Boletín Judicial
+> (`apps/ingestion/src/sources/nexus-pj.adapter.ts`) tiene marcados con
+> `TODO(nexus)` los detalles del endpoint/descarga que deben confirmarse desde
+> dentro de la VPC de AWS (la fuente `boletinjudicial.poder-judicial.go.cr` /
+> `nexuspj.poder-judicial.go.cr` solo es alcanzable desde redes de CR).
+
+## Demo end-to-end (slice vertical validado)
+
+El pipeline completo (parseo → BD → API → alertas) se puede correr localmente
+contra un PostgreSQL real usando un **fixture con el formato real** de los
+edictos (`apps/ingestion/src/parser/__fixtures__/boletin-sample.txt`):
+
+```bash
+export DATABASE_URL=postgresql://postgres@localhost:5432/informes
+
+# esquema + RLS + datos base
+pnpm --filter @informes/db exec prisma db push
+psql "$DATABASE_URL" -f packages/db/prisma/rls.sql
+pnpm --filter @informes/db seed
+
+# 1) ingerir un boletín (fixture con formato real de edictos)
+pnpm --filter @informes/ingestion parse \
+  apps/ingestion/src/parser/__fixtures__/boletin-sample.txt 2026-165
+
+# 2) API arriba, crear una alerta (tenant-scoped, RLS)
+pnpm --filter @informes/api start &
+curl -X POST localhost:4000/api/alerts \
+  -H 'content-type: application/json' -H "x-demo-tenant: <TENANT_ID>" \
+  -d '{"name":"Casas SJ <=60M","category":"PROPERTY_AUCTION",
+       "criteria":{"location":{"provincia":"San José"},"price":{"max":60000000}}}'
+
+# 3) evaluar alertas contra los avisos
+pnpm --filter @informes/ingestion exec tsx src/local-run.ts match-all
+
+# 4) consultar coincidencias
+curl localhost:4000/api/alerts/matches -H "x-demo-tenant: <TENANT_ID>"
+```
+
+Verificado: los extractores parsean remates (inmueble/vehículo, ¢/$),
+sucesorios (nombre + cédula) y disoluciones (razón social + cédula jurídica);
+la RLS aísla alertas y coincidencias por tenant; el matcher respeta
+ubicación/precio/área y cédula/nombre. Cobertura en
+`apps/ingestion/src/parser/parser.test.ts`.
 
 ## Infraestructura
 

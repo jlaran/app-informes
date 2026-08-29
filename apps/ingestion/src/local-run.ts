@@ -21,6 +21,13 @@ async function main() {
       console.log(res);
       break;
     }
+    case 'match-all': {
+      // Evalúa TODAS las alertas activas contra todos los avisos (útil en dev).
+      const ids = (await prisma.notice.findMany({ select: { id: true } })).map((n) => n.id);
+      const matchIds = await matchNotices(ids);
+      console.log(`Avisos evaluados: ${ids.length} | Coincidencias creadas: ${matchIds.length}`);
+      break;
+    }
     case 'parse': {
       const path = args[0];
       const numero = args[1] ?? `local-${Date.now()}`;
@@ -46,7 +53,7 @@ async function main() {
       break;
     }
     default:
-      console.log('Comandos: download | parse <archivo> <numero>');
+      console.log('Comandos: download | parse <archivo> <numero> | match-all');
   }
 }
 
