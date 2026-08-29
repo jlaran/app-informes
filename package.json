@@ -1,0 +1,31 @@
+{
+  "name": "app-informes",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plataforma multi-tenant de inteligencia sobre Boletines Judiciales de Costa Rica (remates, fallecidos, sociedades disueltas y alertas).",
+  "packageManager": "pnpm@9.7.0",
+  "engines": {
+    "node": ">=20.11.0",
+    "pnpm": ">=9.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "pnpm --filter @informes/db generate",
+    "db:migrate": "pnpm --filter @informes/db migrate:dev",
+    "db:seed": "pnpm --filter @informes/db seed",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "turbo": "^2.0.9",
+    "typescript": "^5.5.4"
+  }
+}
