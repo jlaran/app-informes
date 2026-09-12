@@ -105,7 +105,8 @@ const PROV_BY_NORM = new Map(PROVINCIAS.map((p) => [normalizeText(p), p] as cons
  */
 function extractProvincia(text: string): string | undefined {
   const t = normalizeText(text);
-  const m = t.match(/provincia\s+(?:de\s+)?([a-zñ ]{3,40})/);
+  // En los remates la provincia suele venir como "partido de <X>" (folio real).
+  const m = t.match(/(?:provincia|partido)\s+(?:de\s+|del\s+)?([a-zñ ]{3,40})/);
   if (m?.[1]) {
     for (const [norm, proper] of PROV_BY_NORM) {
       if (m[1].startsWith(norm)) return proper;
@@ -144,8 +145,10 @@ export function extractProperty(text: string): PropertyFields {
   const canton = capture(new RegExp(`cant[óo]n\\s+(?:de\\s+)?(${LOC})`, 'i'), text);
   const distrito = capture(new RegExp(`distrito\\s+(?:de\\s+)?(${LOC})`, 'i'), text);
 
+  // Matrícula: "1-234567-000" (con guiones) o "558480" (dígitos simples).
   const matricula =
-    capture(/matr[íi]cula(?:\s+n[úu]mero|\s+de\s+folio\s+real)?[:\s]*([\d]{1,6}-[\d]{3,6}-?[\dF]{0,3})/i, text) ??
+    capture(/matr[íi]cula(?:\s+n[úu]mero|\s+de\s+folio\s+real)?[:\s]*(\d{1,6}-\d{3,6}(?:-[\dF]{1,3})?)/i, text) ??
+    capture(/matr[íi]cula(?:\s+n[úu]mero)?[:\s]*(\d{4,7})\b/i, text) ??
     capture(/folio\s+real[:\s]*([\d-]{5,})/i, text);
 
   const areaRaw = capture(/(?:mide|[áa]rea(?:\s+de)?)[:\s]*([\d.,]+)\s*(?:m(?:2|²)|metros)/i, text);
