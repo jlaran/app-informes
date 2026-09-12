@@ -1,3 +1,4 @@
+import './load-env.js'; // debe ir primero: carga .env antes de instanciar Prisma
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';

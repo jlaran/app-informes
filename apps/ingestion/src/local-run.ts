@@ -5,6 +5,7 @@
  *
  * Requiere DATABASE_URL apuntando a una BD local con el esquema migrado.
  */
+import './load-env.js'; // debe ir primero: carga .env antes de instanciar Prisma
 import { readFile } from 'node:fs/promises';
 import { prisma } from '@informes/db';
 import { extractText } from './pdf/extract-text.js';

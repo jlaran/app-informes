@@ -21,6 +21,7 @@
     "@aws-sdk/client-textract": "^3.620.0",
     "@informes/db": "workspace:*",
     "@informes/shared": "workspace:*",
+    "dotenv": "^16.4.5",
     "pdf-parse": "^1.1.1"
   },
   "devDependencies": {

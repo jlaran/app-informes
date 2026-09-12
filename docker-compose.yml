@@ -1,0 +1,24 @@
+# PostgreSQL para desarrollo local.
+#   docker compose up -d
+# Deja la base en localhost:5432 (usuario/clave: postgres / postgres, db: informes),
+# que es exactamente lo que espera DATABASE_URL en .env.example.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: informes-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: informes
+    ports:
+      - "5432:5432"
+    volumes:
+      - informes_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d informes"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  informes_pgdata:

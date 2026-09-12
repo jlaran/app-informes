@@ -57,30 +57,37 @@ docs/           Arquitectura y modelo de datos
 - **Auth:** Amazon Cognito (claim `custom:tenant_id`).
 - **IaC:** Terraform.
 
-## Puesta en marcha (desarrollo)
+## Puesta en marcha (desarrollo) — 3 pasos
 
-Requisitos: Node 20+, pnpm 9+, PostgreSQL local (o Docker).
+Requisitos: **Node 20+**, **pnpm 9+**, y **Docker** (para la base de datos; o un
+PostgreSQL 16 propio).
 
 ```bash
-# 1. Instalar dependencias
+# 1. Instalar dependencias y base de datos
 pnpm install
+cp .env.example .env          # los valores por defecto ya apuntan al Docker
+docker compose up -d          # PostgreSQL en localhost:5432 (db "informes")
 
-# 2. Configurar entorno
-cp .env.example .env        # y editar DATABASE_URL, etc.
+# 2. Preparar la base (esquema + RLS + datos demo + fixture de ejemplo)
+pnpm db:setup
 
-# 3. Base de datos: generar cliente, migrar y aplicar RLS
-pnpm db:generate
-pnpm db:migrate             # crea el esquema
-psql "$DATABASE_URL" -f packages/db/prisma/rls.sql   # políticas RLS + índices trgm
-pnpm db:seed               # datos de demo (tenant + avisos de ejemplo)
-
-# 4. Levantar API y Web
-pnpm --filter @informes/api dev     # http://localhost:4000/api
-pnpm --filter @informes/web dev     # http://localhost:3000
+# 3. Levantar API + Web juntos
+pnpm dev
+#   API →  http://localhost:4000/api/health
+#   Web →  http://localhost:3000
 ```
 
-Para probar sin Cognito, la web usa cabeceras demo (`x-demo-tenant`) contra la
-API en desarrollo (ver `apps/web/src/lib/api.ts` y `TenantMiddleware`).
+`pnpm db:setup` corre `scripts/setup-local.sh`: `prisma db push`, aplica RLS e
+índices trigram, siembra un tenant demo y **ingiere un boletín de ejemplo con
+formato real**, así la app arranca con datos en las cuatro secciones.
+
+Sin PostgreSQL propio ni Docker, use cualquier Postgres 16 y ajuste
+`DATABASE_URL` en `.env`.
+
+> El `.env` se carga automáticamente (la API y los workers lo buscan hacia
+> arriba en el monorepo). Para probar sin Cognito, la web usa cabeceras demo
+> (`x-demo-tenant`) contra la API en desarrollo (ver `apps/web/src/lib/api.ts` y
+> `TenantMiddleware`).
 
 ## Ingesta (local)
 

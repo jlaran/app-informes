@@ -14,13 +14,15 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "build:packages": "pnpm --filter @informes/shared build && pnpm --filter @informes/db build",
+    "dev": "pnpm build:packages && turbo run dev --filter=@informes/api --filter=@informes/web",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "db:generate": "pnpm --filter @informes/db generate",
     "db:migrate": "pnpm --filter @informes/db migrate:dev",
     "db:seed": "pnpm --filter @informes/db seed",
+    "db:setup": "bash scripts/setup-local.sh",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\""
   },
   "devDependencies": {
