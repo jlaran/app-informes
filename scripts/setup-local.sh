@@ -17,8 +17,11 @@ cd "$(dirname "$0")/.."
 export DATABASE_URL
 echo "→ DATABASE_URL=$DATABASE_URL"
 
-echo "→ (1/5) Generando cliente Prisma…"
-pnpm --filter @informes/db exec prisma generate >/dev/null
+echo "→ (1/5) Construyendo paquetes base (@informes/shared + @informes/db)…"
+# Un clon fresco no tiene compilado dist/ de los paquetes del workspace, y el
+# seed y la ingesta importan @informes/shared y @informes/db. build:packages
+# compila ambos e incluye `prisma generate`.
+pnpm build:packages >/dev/null
 
 echo "→ (2/5) Creando esquema (prisma db push)…"
 # La base puede tardar unos segundos en aceptar conexiones tras `docker compose up`.
