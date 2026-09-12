@@ -21,18 +21,33 @@ echo "→ (1/5) Generando cliente Prisma…"
 pnpm --filter @informes/db exec prisma generate >/dev/null
 
 echo "→ (2/5) Creando esquema (prisma db push)…"
-pnpm --filter @informes/db exec prisma db push --skip-generate
+# La base puede tardar unos segundos en aceptar conexiones tras `docker compose up`.
+# Reintentamos el push hasta que esté lista (máx ~60s).
+for attempt in $(seq 1 20); do
+  if pnpm --filter @informes/db exec prisma db push --skip-generate; then
+    break
+  fi
+  if [ "$attempt" -eq 20 ]; then
+    echo "✗ No se pudo conectar a la base en $DATABASE_URL. ¿Está corriendo? (docker compose up -d)"
+    exit 1
+  fi
+  echo "   Base no lista todavía, reintentando ($attempt)…"
+  sleep 3
+done
 
 echo "→ (3/5) Aplicando RLS e índices trigram…"
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f packages/db/prisma/rls.sql >/dev/null
+# psql (libpq) no acepta el parámetro ?schema=... del URL estilo Prisma: lo quitamos.
+PSQL_URL="${DATABASE_URL%%\?*}"
+psql "$PSQL_URL" -v ON_ERROR_STOP=1 -f packages/db/prisma/rls.sql >/dev/null
 echo "   RLS aplicada."
 
 echo "→ (4/5) Sembrando datos demo…"
 pnpm --filter @informes/db seed
 
 echo "→ (5/5) Ingiriendo fixture de boletín (formato real)…"
+# La ruta es relativa a apps/ingestion (cwd del filtro pnpm).
 pnpm --filter @informes/ingestion exec tsx src/local-run.ts \
-  parse apps/ingestion/src/parser/__fixtures__/boletin-sample.txt 2026-165 || true
+  parse src/parser/__fixtures__/boletin-sample.txt 2026-165 || true
 
 echo ""
 echo "✅ Base lista. Arranca la app con:  pnpm dev"
