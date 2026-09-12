@@ -14,6 +14,11 @@ import { matchNotices } from './matcher/alert-matcher.js';
 import { handler as downloadHandler } from './handlers/download.js';
 import { NexusPjAdapter } from './sources/nexus-pj.adapter.js';
 
+/** JSON.stringify no serializa BigInt (base_price en céntimos): lo pasa a number. */
+function bigintReplacer(_key: string, value: unknown): unknown {
+  return typeof value === 'bigint' ? Number(value) : value;
+}
+
 async function main() {
   const [, , cmd, ...args] = process.argv;
 
@@ -21,6 +26,38 @@ async function main() {
     case 'download': {
       const res = await downloadHandler();
       console.log(res);
+      break;
+    }
+    case 'stats': {
+      // Muestra qué se extrajo, usando la MISMA conexión que `fetch` (evita
+      // confundir la base de la app con otra en el mismo puerto).
+      const byCat = await prisma.notice.groupBy({ by: ['category'], _count: true });
+      console.log('Avisos por categoría:');
+      for (const r of byCat) console.log(`  ${r.category}: ${r._count}`);
+
+      const props = await prisma.propertyAuction.findMany({
+        take: 5,
+        select: { provincia: true, canton: true, basePrice: true, currency: true, remateNumber: true },
+      });
+      console.log('\nPropiedades (muestra):', JSON.stringify(props, bigintReplacer, 2));
+
+      const vehs = await prisma.vehicleAuction.findMany({
+        take: 5,
+        select: { brand: true, model: true, year: true, basePrice: true },
+      });
+      console.log('\nVehículos (muestra):', JSON.stringify(vehs, bigintReplacer, 2));
+
+      const dec = await prisma.deceasedPerson.findMany({
+        take: 5,
+        select: { fullName: true, cedula: true },
+      });
+      console.log('\nFallecidos (muestra):', JSON.stringify(dec, null, 2));
+
+      const dis = await prisma.dissolvedCompany.findMany({
+        take: 5,
+        select: { companyName: true, cedulaJuridica: true },
+      });
+      console.log('\nSociedades (muestra):', JSON.stringify(dis, null, 2));
       break;
     }
     case 'match-all': {
@@ -85,7 +122,7 @@ async function main() {
       break;
     }
     default:
-      console.log('Comandos: download | fetch <documentId> | parse <archivo> <numero> | match-all');
+      console.log('Comandos: download | fetch <documentId> | parse <archivo> <numero> | match-all | stats');
   }
 }
 
