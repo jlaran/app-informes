@@ -28,6 +28,13 @@ async function main() {
       console.log(res);
       break;
     }
+    case 'wipe': {
+      // Borra el plano público (boletines→avisos→detalles y coincidencias en
+      // cascada). Conserva tenants/usuarios/alertas.
+      const del = await prisma.boletin.deleteMany({});
+      console.log(`Boletines borrados: ${del.count} (avisos y detalles en cascada).`);
+      break;
+    }
     case 'stats': {
       // Muestra qué se extrajo, usando la MISMA conexión que `fetch` (evita
       // confundir la base de la app con otra en el mismo puerto).
@@ -122,7 +129,7 @@ async function main() {
       break;
     }
     default:
-      console.log('Comandos: download | fetch <documentId> | parse <archivo> <numero> | match-all | stats');
+      console.log('Comandos: download | fetch <documentId> | parse <archivo> <numero> | match-all | stats | wipe');
   }
 }
 
