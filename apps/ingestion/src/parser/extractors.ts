@@ -96,9 +96,25 @@ export function extractRemateNumber(text: string): RemateNumber | undefined {
   return undefined;
 }
 
-function findProvincia(text: string): string | undefined {
+const PROV_BY_NORM = new Map(PROVINCIAS.map((p) => [normalizeText(p), p] as const));
+
+/**
+ * Extrae la provincia anclándola a la lista conocida (evita capturar de más,
+ * p.ej. "provincia de Guanacaste la finca se encuentra..."). Prefiere la que
+ * sigue a "provincia [de]"; si no, la primera provincia conocida mencionada.
+ */
+function extractProvincia(text: string): string | undefined {
   const t = normalizeText(text);
-  return PROVINCIAS.find((p) => t.includes(normalizeText(p)));
+  const m = t.match(/provincia\s+(?:de\s+)?([a-zñ ]{3,40})/);
+  if (m?.[1]) {
+    for (const [norm, proper] of PROV_BY_NORM) {
+      if (m[1].startsWith(norm)) return proper;
+    }
+  }
+  for (const [norm, proper] of PROV_BY_NORM) {
+    if (t.includes(norm)) return proper;
+  }
+  return undefined;
 }
 
 function capture(re: RegExp, text: string): string | undefined {
@@ -124,7 +140,7 @@ export interface PropertyFields {
 export function extractProperty(text: string): PropertyFields {
   const price = extractBasePrice(text);
 
-  const provincia = capture(new RegExp(`provincia\\s+(?:de\\s+)?(${LOC})`, 'i'), text) ?? findProvincia(text);
+  const provincia = extractProvincia(text);
   const canton = capture(new RegExp(`cant[óo]n\\s+(?:de\\s+)?(${LOC})`, 'i'), text);
   const distrito = capture(new RegExp(`distrito\\s+(?:de\\s+)?(${LOC})`, 'i'), text);
 
@@ -169,7 +185,8 @@ export function extractVehicle(text: string): VehicleFields {
   const placa = capture(/placa[s]?\s*(?:n[úu]mero\s*)?[:\s]*([A-ZÁÉÍÓÚ]{0,3}-?\s?\d{3,6})/i, text)?.replace(/\s+/g, '');
   const brand = capture(/marca[:\s]+([A-Za-zÁÉÍÓÚñÑ0-9-]+)/i, text);
   const model = capture(/(?:modelo|estilo)[:\s]+([A-Za-z0-9ÁÉÍÓÚñÑ ]+?)(?:[,.]|\bplaca\b|\ba[ñn]o\b|$)/i, text);
-  const yearRaw = capture(/\ba[ñn]o[:\s]+((?:19|20)\d{2})\b/i, text) ?? text.match(/\b(19|20)\d{2}\b/)?.[0];
+  // Solo año explícito ("año/modelo YYYY"): evita capturar el año de publicación.
+  const yearRaw = capture(/(?:a[ñn]o|modelo)[:\s]+((?:19|20)\d{2})\b/i, text);
 
   return {
     placa,
