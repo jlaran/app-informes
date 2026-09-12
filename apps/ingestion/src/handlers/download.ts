@@ -7,8 +7,9 @@ import type { SourceAdapter } from '../sources/source-adapter.js';
 
 /**
  * Handler de descarga (disparado por EventBridge, cron diario).
- * Lista ediciones nuevas de la fuente, descarga el PDF, lo sube a S3 y registra
- * el boletín. El evento de creación de objeto en S3 dispara el parsing (SQS).
+ * Lista ediciones nuevas de la fuente, descarga el HTML del boletín, lo sube a
+ * S3 y registra el boletín. El evento de creación del objeto en S3 dispara el
+ * parsing (SQS).
  */
 export async function handler(): Promise<{ downloaded: number }> {
   assertConfig(['s3RawBucket']);
@@ -36,15 +37,15 @@ export async function handler(): Promise<{ downloaded: number }> {
     });
 
     try {
-      const pdf = await adapter.downloadPdf(ref);
-      const key = `raw-boletines/${ref.publishedAt.getFullYear()}/${ref.numero}.pdf`;
+      const content = await adapter.fetchContent(ref);
+      const key = `raw-boletines/${ref.publishedAt.getFullYear()}/${ref.numero}.html`;
       await s3.send(
         new PutObjectCommand({
           Bucket: config.s3RawBucket,
           Key: key,
-          Body: pdf,
-          ContentType: 'application/pdf',
-          Metadata: { boletinId: boletin.id, numero: ref.numero },
+          Body: content.html,
+          ContentType: 'text/html; charset=utf-8',
+          Metadata: { boletinId: boletin.id, numero: ref.numero, documentId: ref.documentId },
         }),
       );
       await prisma.boletin.update({

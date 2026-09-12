@@ -5,6 +5,7 @@ import { prisma } from '@informes/db';
 import { s3, sqs } from '../aws.js';
 import { config } from '../config.js';
 import { extractText } from '../pdf/extract-text.js';
+import { htmlToText } from '../parser/html-to-text.js';
 import { parseBoletin } from '../parser/index.js';
 
 /**
@@ -38,8 +39,18 @@ export async function handler(event: SQSEvent): Promise<SQSBatchResponse> {
       );
       const bytes = await obj.Body!.transformToByteArray();
 
-      const { text, pageCount } = await extractText(bytes);
-      await prisma.boletin.update({ where: { id: boletin.id }, data: { pageCount } });
+      // Los boletines de Nexus PJ se guardan como HTML; PDF es fallback legado.
+      let text: string;
+      if (key.endsWith('.html')) {
+        text = htmlToText(Buffer.from(bytes).toString('utf8'));
+      } else {
+        const extracted = await extractText(bytes);
+        text = extracted.text;
+        await prisma.boletin.update({
+          where: { id: boletin.id },
+          data: { pageCount: extracted.pageCount },
+        });
+      }
 
       const result = await parseBoletin(boletin.id, text, boletin.publishedAt);
       console.log(

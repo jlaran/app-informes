@@ -9,6 +9,9 @@ export const config = {
   nexusPj: {
     baseUrl: process.env.NEXUS_PJ_BASE_URL ?? 'https://nexuspj.poder-judicial.go.cr',
     query: process.env.NEXUS_PJ_QUERY ?? 'tipoInformacion:(Boletín AND Judicial)',
+    // Opcional: cookie de una sesión de navegador, por si la protección de bots
+    // bloquea el acceso directo (403). Ver NexusPjAdapter.
+    cookie: process.env.NEXUS_PJ_COOKIE ?? '',
   },
 } as const;
 
